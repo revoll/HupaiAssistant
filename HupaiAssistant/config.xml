@@ -1,4 +1,4 @@
-<HupaiAssistant version="2016.5" time="2016-05-21 10:30" description="" mode="moni">
+<HupaiAssistant version="2016.5" time="2016-05-21 10:30" description="" real_mode="0">
 
 	<BidInfo>
 		<BidDate>2016-05-21</BidDate>
@@ -27,7 +27,7 @@
 		<YZM_Submit>535,320</YZM_Submit>
 		<YZM_Cancle>725,320</YZM_Cancle>
 		<OK_Button>640,315</OK_Button>
-		<YZM_Info>445,255,360,25</YZM_Info>
+		<YZM_Info>450,255,350,25</YZM_Info>
 		<YZM_Picture>715,211,115,35</YZM_Picture>
 	</Position_51hupai>
 	
@@ -35,13 +35,13 @@
 	</Position_alltobid>
 	
 	<HotKey>
-		<StartFJ desc="CTRL 7">131127</StartFJ>
 		<PressOK desc="CTRL Y">131161</PressOK>
-		<PressRefresh desc="CTRL R">131154</PressRefresh>
-		<ClearYZM desc="CTRL Z">131162</ClearYZM>
 		<PressConfirm desc="CTRL X">131160</PressConfirm>
 		<PressCancle desc="CTRL C">131139</PressCancle>
-		<Enter desc="Enter">13</Enter>
+		<PressRefresh desc="CTRL R">131154</PressRefresh>
+		<ClearYZM desc="CTRL Z">131162</ClearYZM>
+		<ChuJia desc="CTRL 7">131127</ChuJia>
+		<AutoConfirm desc="Enter">13</AutoConfirm>
 		<Escape desc="Esc">27</Escape>
 	</HotKey>
 

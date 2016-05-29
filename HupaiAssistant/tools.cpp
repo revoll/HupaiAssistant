@@ -98,11 +98,11 @@ CPoint Tools::PointFromStr(const char *p_p) {
 }
 
 
-CString Tools::PointToStr(CPoint &pt) {
+CString Tools::PointToStr(const CPoint *pt) {
 
 	CString p_r;
 
-	p_r.Format(_T("%d,%d"), pt.x, pt.y);
+	p_r.Format(_T("%d,%d"), pt->x, pt->y);
 
 	return p_r;
 }
@@ -118,11 +118,11 @@ CRect Tools::RectFromStr(const char *p_r) {
 }
 
 
-CString Tools::RectToStr(CRect &rect) {
+CString Tools::RectToStr(const CRect *rect) {
 
 	CString r_r;
 
-	r_r.Format(_T("%d,%d,%d,%d"), rect.left, rect.top, rect.Width(), rect.Height());
+	r_r.Format(_T("%d,%d,%d,%d"), rect->left, rect->top, rect->Width(), rect->Height());
 
 	return r_r;
 }
@@ -150,7 +150,7 @@ BOOL Tools::SaveBitmap(const CDC *pdc, const char *name) {
 	fopen_s(&fp, name, "wb");
 	bitmap = pdc->GetCurrentBitmap();
 	bitmap->GetBitmap(&bmp);
-
+	
 	bih.biBitCount = bmp.bmBitsPixel;
 	bih.biCompression = BI_RGB;
 	bih.biHeight = bmp.bmHeight;
@@ -164,8 +164,7 @@ BOOL Tools::SaveBitmap(const CDC *pdc, const char *name) {
 	bfh.bfType = (WORD)0x4d42;
 
 	pData = new BYTE[bmp.bmWidthBytes * bmp.bmHeight];
-	GetDIBits(pdc->m_hDC, (HBITMAP) bitmap->m_hObject, 0, bmp.bmHeight, pData,
-		(LPBITMAPINFO) &bih, DIB_RGB_COLORS);
+	GetDIBits(pdc->m_hDC, (HBITMAP)bitmap->m_hObject, 0, bmp.bmHeight, pData, (LPBITMAPINFO)&bih, DIB_RGB_COLORS);
 	fwrite(&bfh, 1, sizeof(BITMAPFILEHEADER), fp);
 	fwrite(&bih, 1, sizeof(BITMAPINFOHEADER), fp);
 	fwrite(pData, 1, bmp.bmWidthBytes * bmp.bmHeight, fp);

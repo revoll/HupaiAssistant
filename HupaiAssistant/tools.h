@@ -13,10 +13,10 @@ public:
 	static CString TimeToStr(int);
 
 	static CPoint PointFromStr(const char *);
-	static CString PointToStr(CPoint &);
+	static CString PointToStr(const CPoint *);
 
 	static CRect RectFromStr(const char *);
-	static CString RectToStr(CRect &);
+	static CString RectToStr(const CRect *);
 
 	static LONG LongFromStr(const char *);
 

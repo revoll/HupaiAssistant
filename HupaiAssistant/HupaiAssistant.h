@@ -69,14 +69,14 @@ public:
 	//
 	// 系统热键
 	//
-	DWORD hotkey_start_fuji;				// 触发默认出价程序（伏击）
 	DWORD hotkey_ok;
-	DWORD hotkey_refresh;
-	DWORD hotkey_clear;
 	DWORD hotkey_confirm;
 	DWORD hotkey_cancle;
-	DWORD hoteky_enter;
-	DWORD hoteky_escape;
+	DWORD hotkey_refresh;
+	DWORD hotkey_clear;
+	DWORD hotkey_chujia;				// 如：+700出价
+	DWORD hoteky_auto_confirm;
+	DWORD hoteky_escape;				// 退出正在进行的模式
 
 	//
 	// 自动伏击模式
@@ -103,6 +103,7 @@ public:
 	volatile int serverSecond;
 	volatile int serverDelay;
 	volatile int price;
+	volatile int autoBidStep;
 };
 
 

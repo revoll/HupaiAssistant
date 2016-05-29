@@ -21,6 +21,7 @@
 
 Settings::Bid::Bid() {
 
+	auto_trigger = FALSE;
 	trigger_time = Tools::MakeTime(0, 0, 0, 0);				// 自动启动时间（大于当前时间才可以触发自动启动）
 	add_price = 300;										// 最低价基础上的加价幅度
 	commit_advance = 0;										// 提前出价量
@@ -53,15 +54,8 @@ BOOL Settings::LoadSettings() {
 	ASSERT(cfg_version = eRoot->Attribute("version"));
 	ASSERT(cfg_time = eRoot->Attribute("time"));
 	ASSERT(cfg_desc = eRoot->Attribute("description"));
-	const char *pMode;
-	ASSERT(pMode = eRoot->Attribute("mode"));
-	if(0 == strcmp(pMode, "moni")) {
-		this->isRealMode = FALSE;
-	} else if(0 == strcmp(pMode, "real")) {
-		this->isRealMode = TRUE;
-	} else {
-		return FALSE;
-	}
+	ASSERT(eRoot->Attribute("real_mode"));
+	this->isRealMode = (eRoot->Attribute("real_mode") == "1") ? TRUE : FALSE;
 	
 	//
 	// 读取本次拍卖信息
@@ -136,27 +130,27 @@ BOOL Settings::LoadSettings() {
 	// 热键设置
 	//
 	ASSERT(e = eRoot->FirstChildElement("HotKey"));
-	// 启动默认伏击策略：如48s+700。
-	ASSERT(e1 = e->FirstChildElement("StartFJ"));
-	this->hotkey_start_fuji = Tools::LongFromStr(e1->GetText());
 	// 点击确认按钮：对话框包含一个按钮情况下
 	ASSERT(e1 = e->FirstChildElement("PressOK"));
 	this->hotkey_ok = Tools::LongFromStr(e1->GetText());
-	// 刷新验证码
-	ASSERT(e1 = e->FirstChildElement("PressRefresh"));
-	this->hotkey_refresh = Tools::LongFromStr(e1->GetText());
-	// 清空验证码
-	ASSERT(e1 = e->FirstChildElement("ClearYZM"));
-	this->hotkey_clear = Tools::LongFromStr(e1->GetText());
 	// 点击确认验证码按钮
 	ASSERT(e1 = e->FirstChildElement("PressConfirm"));
 	this->hotkey_confirm = Tools::LongFromStr(e1->GetText());
 	// 点击取消验证码按钮
 	ASSERT(e1 = e->FirstChildElement("PressCancle"));
 	this->hotkey_cancle = Tools::LongFromStr(e1->GetText());
+	// 刷新验证码
+	ASSERT(e1 = e->FirstChildElement("PressRefresh"));
+	this->hotkey_refresh = Tools::LongFromStr(e1->GetText());
+	// 清空验证码
+	ASSERT(e1 = e->FirstChildElement("ClearYZM"));
+	this->hotkey_clear = Tools::LongFromStr(e1->GetText());
+	// 启动默认伏击策略：如48s+700。
+	ASSERT(e1 = e->FirstChildElement("ChuJia"));
+	this->hotkey_chujia = Tools::LongFromStr(e1->GetText());
 	// 退出任何自动模式
-	ASSERT(e1 = e->FirstChildElement("Enter"));
-	this->hoteky_enter = Tools::LongFromStr(e1->GetText());
+	ASSERT(e1 = e->FirstChildElement("AutoConfirm"));
+	this->hoteky_auto_confirm = Tools::LongFromStr(e1->GetText());
 	// 退出任何自动模式
 	ASSERT(e1 = e->FirstChildElement("Escape"));
 	this->hoteky_escape = Tools::LongFromStr(e1->GetText());
@@ -179,10 +173,10 @@ BOOL Settings::LoadSettings() {
 	bid.commit_advance = atoi(e1->GetText());
 	// 到达伏击价时，延迟多少时间再出价？
 	ASSERT(e1 = e->FirstChildElement("CommitDelay"));
-	bid.commit_delay = atoi(e1->GetText());
+	bid.commit_delay = Tools::TimeFromStr(e1->GetText());
 	// 最晚出价时间：在此时间必须出价！
 	ASSERT(e1 = e->FirstChildElement("CommitBefore"));
-	bid.commit_before = atoi(e1->GetText());
+	bid.commit_before = Tools::TimeFromStr(e1->GetText());
 
 	//
 	// 配置信息加载结束
@@ -193,7 +187,7 @@ BOOL Settings::LoadSettings() {
 
 BOOL Settings::SaveSettings() {
 
-	return TRUE;
+	return FALSE;
 }
 
 
@@ -201,6 +195,7 @@ Status::Status() {
 	serverHour = serverMinute = serverSecond = 0;
 	serverDelay = 0;
 	price = 0;
+	autoBidStep = 0;
 }
 
 //--------------------------------------------------------------------------------------------------
