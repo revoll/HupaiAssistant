@@ -1,0 +1,77 @@
+<HupaiAssistant version="2016.5" time="2016-05-21 10:30" description="" mode="moni">
+
+	<BidInfo>
+		<BidDate>2016-05-21</BidDate>
+		<EndTime>11:30:00.0</EndTime>
+		<Amount>11598</Amount>
+		<CapPrice>82800</CapPrice>
+	</BidInfo>
+	
+	<IE>
+		<Width>1100</Width>
+		<Height>860</Height>
+		<URL>https://paimai.alltobid.com/</URL>
+		<URL_Practice>http://moni.51hupai.org/</URL_Practice>
+	</IE>
+	
+	<Position_51hupai>
+		<Index>115,262</Index>
+		<OCR_Time>101,228,64,10</OCR_Time>
+		<OCR_Price>129,244,40,10</OCR_Price>
+		<JJ_Input>665,150</JJ_Input>
+		<JJ_Button>777,150</JJ_Button>
+		<CJ_Input>665,255</CJ_Input>
+		<CJ_Button>777,255</CJ_Button>
+		<YZM_Input>680,230</YZM_Input>
+		<YZM_Refresh>770,230</YZM_Refresh>
+		<YZM_Submit>535,320</YZM_Submit>
+		<YZM_Cancle>725,320</YZM_Cancle>
+		<OK_Button>640,315</OK_Button>
+		<YZM_Info>445,255,360,25</YZM_Info>
+		<YZM_Picture>715,211,115,35</YZM_Picture>
+	</Position_51hupai>
+	
+	<Position_alltobid>
+	</Position_alltobid>
+	
+	<HotKey>
+		<StartFJ desc="CTRL 7">131127</StartFJ>
+		<PressOK desc="CTRL Y">131161</PressOK>
+		<PressRefresh desc="CTRL R">131154</PressRefresh>
+		<ClearYZM desc="CTRL Z">131162</ClearYZM>
+		<PressConfirm desc="CTRL X">131160</PressConfirm>
+		<PressCancle desc="CTRL C">131139</PressCancle>
+		<Enter desc="Enter">13</Enter>
+		<Escape desc="Esc">27</Escape>
+	</HotKey>
+
+	<AutoBid>
+		<AutoTrigger>0</AutoTrigger>
+		<TriggerTime>11:29:48.0</TriggerTime>
+		<AddPrice>700</AddPrice>
+		<CommitAdvance>100</CommitAdvance>
+		<CommitDelay>0:0:1.0</CommitDelay>
+		<CommitBefore>11:29:56.0</CommitBefore>
+	</AutoBid>
+	
+</HupaiAssistant>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
