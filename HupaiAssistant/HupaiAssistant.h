@@ -37,9 +37,9 @@ public:
 	// 拍卖信息
 	//
 	CString bid_date;
-	CString bid_time;
-	CString bid_amount;
-	CString bid_cap_price;
+	int bid_time;
+	int bid_amount;
+	int bid_cap_price;
 
 	//
 	// IE浏览器设置
@@ -75,21 +75,22 @@ public:
 	DWORD hotkey_refresh;
 	DWORD hotkey_clear;
 	DWORD hotkey_chujia;				// 如：+700出价
-	DWORD hoteky_auto_confirm;
-	DWORD hoteky_escape;				// 退出正在进行的模式
+	DWORD hotkey_auto_confirm;
+	DWORD hotkey_escape;				// 退出正在进行的模式
+	DWORD hotkey_test_yzm;				// 测试：预览验证码
 
 	//
 	// 自动伏击模式
 	//
-	struct Bid {
-		Bid();
+	typedef struct tagBid {
 		BOOL auto_trigger;				// 自动触发：到了触发时间自动出价？
 		int trigger_time;				// 出价时间：一天中的第几毫秒
 		int add_price;					// 最低价加价幅度
 		int commit_advance;				// 最高价提前出价量
 		int commit_delay;				// 到达最高价延迟多少毫秒出价
 		int commit_before;				// 最晚出价时间（强制出价）
-	} bid;								// == 伏击模式：48s+700 ==
+	} Bid;
+	Bid	bid;							// == 伏击模式：48s+700 ==
 //------------------------------------------------------------------------------
 };
 
@@ -98,12 +99,29 @@ class Status
 {
 public:
 	Status();
+//------------------------------------------------------------------------------
+	//
+	// 服务器信息
+	//
 	volatile int serverHour;
 	volatile int serverMinute;
 	volatile int serverSecond;
 	volatile int serverDelay;
-	volatile int price;
-	volatile int autoBidStep;
+	volatile int price;					// 当前最低价
+	volatile int bid_price;				// 目标伏击价格
+
+	//
+	// 竞价阶段标志
+	//
+	typedef enum tagAutoBidStep {
+		NORMAL,
+		YZM,
+		AUTO_CONFIRM,
+		CONFIRMED,
+		FINISHED
+	} AutoBidStep;
+	volatile AutoBidStep autoBidStep;
+//------------------------------------------------------------------------------
 };
 
 

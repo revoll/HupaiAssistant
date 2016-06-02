@@ -19,17 +19,6 @@
 // Class: Setting
 //
 
-Settings::Bid::Bid() {
-
-	auto_trigger = FALSE;
-	trigger_time = Tools::MakeTime(0, 0, 0, 0);				// 自动启动时间（大于当前时间才可以触发自动启动）
-	add_price = 300;										// 最低价基础上的加价幅度
-	commit_advance = 0;										// 提前出价量
-	commit_delay = Tools::MakeTime(0, 0, 0, 0);				// 到达伏击价时，延迟多少时间再提交？
-	commit_before = Tools::MakeTime(11, 29, 56, 0);			// 到达此时间时强制提交
-}
-
-
 Settings::Settings() {
 
 	LoadSettings();
@@ -66,13 +55,13 @@ BOOL Settings::LoadSettings() {
 	this->bid_date = e1->GetText();
 	// 竞拍结束时间
 	ASSERT(e1 = e->FirstChildElement("EndTime"));
-	this->bid_time = e1->GetText();
+	this->bid_time = Tools::TimeFromStr(e1->GetText());
 	// 沪牌指标
 	ASSERT(e1 = e->FirstChildElement("Amount"));
-	this->bid_amount = e1->GetText();
+	this->bid_amount = atoi(e1->GetText());
 	// 警示价
 	ASSERT(e1 = e->FirstChildElement("CapPrice"));
-	this->bid_cap_price = e1->GetText();
+	this->bid_cap_price = atoi(e1->GetText());
 
 	//
 	// 读取IE浏览器配置
@@ -150,11 +139,13 @@ BOOL Settings::LoadSettings() {
 	this->hotkey_chujia = Tools::LongFromStr(e1->GetText());
 	// 退出任何自动模式
 	ASSERT(e1 = e->FirstChildElement("AutoConfirm"));
-	this->hoteky_auto_confirm = Tools::LongFromStr(e1->GetText());
+	this->hotkey_auto_confirm = Tools::LongFromStr(e1->GetText());
 	// 退出任何自动模式
 	ASSERT(e1 = e->FirstChildElement("Escape"));
-	this->hoteky_escape = Tools::LongFromStr(e1->GetText());
-
+	this->hotkey_escape = Tools::LongFromStr(e1->GetText());
+	// 测试：预览验证码
+	ASSERT(e1 = e->FirstChildElement("TestYZM"));
+	this->hotkey_test_yzm = Tools::LongFromStr(e1->GetText());
 
 	//
 	// 读取竞拍模式 & 伏击配置
@@ -192,10 +183,12 @@ BOOL Settings::SaveSettings() {
 
 
 Status::Status() {
+
 	serverHour = serverMinute = serverSecond = 0;
 	serverDelay = 0;
 	price = 0;
-	autoBidStep = 0;
+	bid_price = 0;
+	autoBidStep = Status::NORMAL;
 }
 
 //--------------------------------------------------------------------------------------------------
@@ -242,7 +235,7 @@ BOOL CHupaiAssistantApp::InitInstance()
 
 	// 创建 shell 管理器，以防对话框包含
 	// 任何 shell 树视图控件或 shell 列表视图控件。
-	CShellManager *pShellManager = new CShellManager;
+	CShellManager *pShellManager = NULL; // new CShellManager;
 
 	// 标准初始化
 	// 如果未使用这些功能并希望减小
@@ -256,20 +249,16 @@ BOOL CHupaiAssistantApp::InitInstance()
 	CMainDlg dlg;
 	m_pMainWnd = &dlg;
 	INT_PTR nResponse = dlg.DoModal();
-	if (nResponse == IDOK)
-	{
+	if (nResponse == IDOK) {
 		// TODO: 在此放置处理何时用
 		//  “确定”来关闭对话框的代码
-	}
-	else if (nResponse == IDCANCEL)
-	{
+	} else if (nResponse == IDCANCEL) {
 		// TODO: 在此放置处理何时用
 		//  “取消”来关闭对话框的代码
 	}
 
 	// 删除上面创建的 shell 管理器。
-	if (pShellManager != NULL)
-	{
+	if (pShellManager != NULL) {
 		delete pShellManager;
 	}
 
@@ -277,4 +266,3 @@ BOOL CHupaiAssistantApp::InitInstance()
 	//  而不是启动应用程序的消息泵。
 	return FALSE;
 }
-

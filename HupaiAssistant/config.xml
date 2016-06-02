@@ -8,14 +8,14 @@
 	</BidInfo>
 	
 	<IE>
-		<Width>1100</Width>
-		<Height>860</Height>
+		<Width>1000</Width>
+		<Height>800</Height>
 		<URL>https://paimai.alltobid.com/</URL>
 		<URL_Practice>http://moni.51hupai.org/</URL_Practice>
 	</IE>
 	
 	<Position_51hupai>
-		<Index>115,262</Index>
+		<Index>65,231</Index>
 		<OCR_Time>101,228,64,10</OCR_Time>
 		<OCR_Price>129,244,40,10</OCR_Price>
 		<JJ_Input>665,150</JJ_Input>
@@ -27,7 +27,7 @@
 		<YZM_Submit>535,320</YZM_Submit>
 		<YZM_Cancle>725,320</YZM_Cancle>
 		<OK_Button>640,315</OK_Button>
-		<YZM_Info>450,255,350,25</YZM_Info>
+		<YZM_Info>455,255,345,25</YZM_Info>
 		<YZM_Picture>715,211,115,35</YZM_Picture>
 	</Position_51hupai>
 	
@@ -43,15 +43,16 @@
 		<ChuJia desc="CTRL 7">131127</ChuJia>
 		<AutoConfirm desc="Enter">13</AutoConfirm>
 		<Escape desc="Esc">27</Escape>
+		<TestYZM desc="CTRL T">131156</TestYZM>
 	</HotKey>
 
 	<AutoBid>
-		<AutoTrigger>0</AutoTrigger>
-		<TriggerTime>11:29:48.0</TriggerTime>
+		<AutoTrigger desc="unused">0</AutoTrigger>
+		<TriggerTime desc="unused">11:29:48.0</TriggerTime>
 		<AddPrice>700</AddPrice>
 		<CommitAdvance>100</CommitAdvance>
 		<CommitDelay>0:0:1.0</CommitDelay>
-		<CommitBefore>11:29:56.0</CommitBefore>
+		<CommitBefore>11:29:55.600</CommitBefore>
 	</AutoBid>
 	
 </HupaiAssistant>

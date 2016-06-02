@@ -45,12 +45,6 @@ END_MESSAGE_MAP()
 // Class: CMainDlg
 //
 
-volatile BOOL CMainDlg::canCheckOCR = FALSE;
-volatile BOOL CMainDlg::canAutoConfirm = FALSE;
-volatile BOOL CMainDlg::isCheckOCR = FALSE;
-volatile BOOL CMainDlg::isAutoConfirm = FALSE;
-
-
 CMainDlg::CMainDlg(CWnd* pParent /*=NULL*/)
 	: CDialogEx(CMainDlg::IDD, pParent)
 {
@@ -68,7 +62,10 @@ CMainDlg::CMainDlg(CWnd* pParent /*=NULL*/)
 	lf.lfHeight = -72;
 	fontL.CreateFontIndirect(&lf);
 
-	penOutline.CreatePen(PS_SOLID, 1, RGB(0, 255, 0));
+	penSolid.CreatePen(PS_SOLID, 1, RGB(0, 255, 0));
+	penDot.CreatePen(PS_DOT, 1, RGB(0, 255, 0));
+
+	brush.CreateSolidBrush(RGB(40, 220, 40));
 }
 
 
@@ -79,7 +76,10 @@ CMainDlg::~CMainDlg() {
 	fontM.DeleteObject();
 	fontL.DeleteObject();
 
-	penOutline.DeleteObject();
+	penSolid.DeleteObject();
+	penDot.DeleteObject();
+
+	brush.DeleteObject();
 }
 
 
@@ -117,12 +117,6 @@ BOOL CMainDlg::OnInitDialog() {
 	MoveWindow(0, 0, rWin.Width() + DISP_WIDTH, rWin.Height() + DISP_HEIGHT + 50);
 
 	//
-	// 启动OCR线程
-	//
-	canCheckOCR = TRUE;
-	_beginthread(Thread_CheckOCR, 0, NULL);
-
-	//
 	// 注册系统热键
 	//
 	if(FALSE == RegistHotKey()) {
@@ -130,19 +124,44 @@ BOOL CMainDlg::OnInitDialog() {
 		SendMessage(WM_CLOSE);
 	}
 
+	//
+	// IE相关
+	//
+	if(pWndIE = CDialog::FindWindow(_T("IEFrame"), NULL)) {
+		if(IDOK == MessageBox(_T("检测到IE已经打开，是否重新启动？"), _T("提示"), MB_OKCANCEL)) {
+			pWndIE->SendMessage(WM_CLOSE);
+			pWndIE = NULL;
+		}
+	}
+	if(NULL == pWndIE) {
+		ShellExecute(NULL, _T("open"), _T("C:\\Program Files\\Internet Explorer\\iexplore.exe"), theApp.settings.ie_url, NULL, SW_SHOWNORMAL);
+		do {
+			Sleep(1000);
+		} while(NULL == (pWndIE = CDialog::FindWindow(_T("IEFrame"), NULL)));
+	}
+	HWND hWnd = pWndIE->GetSafeHwnd();
+	::SetWindowLong(hWnd, GWL_STYLE, GetWindowLong(hWnd, GWL_STYLE) & ~(WS_MINIMIZEBOX  | WS_MAXIMIZEBOX | WS_THICKFRAME) );
+	::SetWindowPos(hWnd, NULL, 0, 0, theApp.settings.ie_width, theApp.settings.ie_height, SWP_NOMOVE | SWP_FRAMECHANGED);
+
+	//
+	// 启动OCR线程
+	//
+	canNormal = TRUE;
+	_beginthread(Thread_Normal, 0, NULL);
+
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
 
 
 void CMainDlg::OnDestroy() {
 
-	if(FALSE == UnregisteHotKey()) {
+	if( (! m_EnableHotKey.GetCheck()) && (UnregisteHotKey() == FALSE) ) {
 		AfxMessageBox(_T("解绑系统热键出现问题。"));
 	}
 
-	canCheckOCR = FALSE;
+	canNormal = FALSE;
 	canAutoConfirm = FALSE;
-	while(isCheckOCR || isAutoConfirm) {
+	while(isNormal || isAutoConfirm) {
 		Sleep(500);
 	}
 
@@ -150,19 +169,10 @@ void CMainDlg::OnDestroy() {
 }
 
 
-BOOL CMainDlg::PreTranslateMessage(MSG* pMsg) {
-
-	// TODO: 在此添加专用代码和/或调用基类
-
-	return CDialogEx::PreTranslateMessage(pMsg);
-}
-
-
 void CMainDlg::DoDataExchange(CDataExchange* pDX) {
 
 	CDialogEx::DoDataExchange(pDX);
 	DDX_Control(pDX, IDC_HOTKEY_MODE, m_EnableHotKey);
-	DDX_Check(pDX, IDC_HOTKEY_MODE, m_HotKeyEnabled);
 	DDX_Control(pDX, IDC_HOTKEY_TEST, m_HotKey);
 	DDX_Control(pDX, IDC_HOTKEY_CALC, m_CalcHotKey);
 }
@@ -216,34 +226,31 @@ static inline void InputChar(BYTE c) {
 
 void CMainDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2) {
 
-	CWnd *pWndIE = NULL;
 	CPoint pt, ptIndex(theApp.settings.pt_index);
 
 
-	if(pWndIE = FindWindow(_T("IEFrame"), NULL)) {
-		pWndIE->ClientToScreen(&ptIndex);
-	} else {
-		AfxMessageBox(_T("未找到IE浏览器。"));
-		return;
-	}
+	pWndIE->ClientToScreen(&ptIndex);
 
 	if(nHotKeyId == HOTKEY_OK) {
 
 		pt = ptIndex;
 		pt.Offset(theApp.settings.pt_ok);
 		ClickOnce(pt);
+		theApp.status.autoBidStep = Status::NORMAL;
 
 	} else if(nHotKeyId == HOTKEY_CONFIRM) {
 
 		pt = ptIndex;
 		pt.Offset(theApp.settings.pt_yzm_ok);
 		ClickOnce(pt);
+		theApp.status.autoBidStep = Status::NORMAL;
 
 	} else if(nHotKeyId == HOTKEY_CANCLE) {
 
 		pt = ptIndex;
 		pt.Offset(theApp.settings.pt_yzm_cancle);
 		ClickOnce(pt);
+		theApp.status.autoBidStep = Status::NORMAL;
 
 	} else if(nHotKeyId == HOTKEY_REFRESH) {
 
@@ -259,8 +266,8 @@ void CMainDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2) {
 
 	} else if(nHotKeyId == HOTKEY_CHUJIA) {
 
-		if(theApp.status.autoBidStep == 0) {
-			theApp.status.autoBidStep = 1;
+		if(theApp.status.autoBidStep == Status::NORMAL) {
+			theApp.status.autoBidStep = Status::YZM;
 		} else {
 			return;
 		}
@@ -268,10 +275,11 @@ void CMainDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2) {
 		pt = ptIndex;
 		pt.Offset(theApp.settings.pt_jiajia_input);
 		ClickOnce(pt);
-		Sleep(CLICK_DELAY * 4);
-		ClearInput(pt);
 		Sleep(CLICK_DELAY);
-		
+		ClickOnce(pt); // Click Twice to ensure this click.
+		Sleep(CLICK_DELAY);
+
+		ClearInput(pt);
 		int delta = theApp.settings.bid.add_price;
 		std::stack<BYTE> stk;
 		while(delta > 0) {
@@ -282,29 +290,59 @@ void CMainDlg::OnHotKey(UINT nHotKeyId, UINT nKey1, UINT nKey2) {
 			InputChar(stk.top() + '0');
 			stk.pop();
 		}
+		Sleep(CLICK_DELAY);
 
 		pt = ptIndex;
 		pt.Offset(theApp.settings.pt_jiajia);
 		ClickOnce(pt);
-		Sleep(CLICK_DELAY * 8);
+		Sleep(CLICK_DELAY);
 		pt = ptIndex;
 		pt.Offset(theApp.settings.pt_chujia);
 		ClickOnce(pt);
 
+		theApp.status.bid_price = theApp.status.price + theApp.settings.bid.add_price;
+
 	} else if(nHotKeyId == HOTKEY_AUTO_CONFIRM) {
 
-		if(theApp.status.autoBidStep == 1) {
-			theApp.status.autoBidStep = 2;
-		} else {
+		if(theApp.status.autoBidStep != Status::YZM) {
 			return;
 		}
+		Tools::SaveBitmap(pWndIE->GetDC(), "ss_shot.bmp");
+		theApp.status.autoBidStep = Status::AUTO_CONFIRM;
 		canAutoConfirm = TRUE;
 		_beginthread(Thread_AutoConfirm, 0, NULL);
 
 	} else if(nHotKeyId == HOTKEY_ESCAPE) {
 
-		canAutoConfirm = FALSE;
-		theApp.status.autoBidStep = 0;
+		// 点击确认
+		pt = ptIndex;
+		pt.Offset(theApp.settings.pt_ok);
+		ClickOnce(pt);
+		Sleep(CLICK_DELAY);
+		// 点击取消
+		pt = ptIndex;
+		pt.Offset(theApp.settings.pt_yzm_cancle);
+		ClickOnce(pt);
+		Sleep(CLICK_DELAY);
+		// 点击确认
+		pt = ptIndex;
+		pt.Offset(theApp.settings.pt_ok);
+		ClickOnce(pt);
+		// 结束智能出价线程（如果开启），回归常规模式。
+		if(theApp.status.autoBidStep != Status::NORMAL) {
+			canAutoConfirm = FALSE;
+			theApp.status.autoBidStep = Status::NORMAL;
+		}
+
+	} else if(nHotKeyId == HOTKEY_TEST_YZM) {
+
+		pt = ptIndex;
+		pt.Offset(theApp.settings.pt_chujia);
+		ClickOnce(pt);
+		// Sleep(3000);
+		// pt = ptIndex;
+		// pt.Offset(theApp.settings.pt_yzm_cancle);
+		// ClickOnce(pt);
 
 	} else {
 		AfxMessageBox(_T("未识别的热键！"));
@@ -323,53 +361,144 @@ BOOL CMainDlg::OnEraseBkgnd(CDC* pDC) {
 }
 
 
+static inline void FillTriangle(CDC *pDc, POINT &pt, BOOL top=FALSE) {
+
+	POINT gpt[4] = {pt.x, pt.y, pt.x - 10, pt.y + 10, pt.x + 10, pt.y + 10, pt.x, pt.y};
+	if(top) { gpt[1].y -= 20; gpt[2].y -= 20; }
+	pDc->Polygon(gpt, 4);
+}
+
+
 void CMainDlg::OnPaint() {
 
 	CPaintDC dc(this);
 	CDC memDC;
 	CBitmap memBmp;
-	CRect rect(0, 0, DISP_WIDTH, DISP_HEIGHT);
-	CString str;
 	SYSTEMTIME time;
+	CString str;
+	CRect rect(0, 0, DISP_WIDTH, DISP_HEIGHT);
+	CPoint pt;
+	int steps, nStep;
+	COLORREF bkgnd = RGB(0, 0, 40);
+	COLORREF green = RGB(40, 220, 40);
+	COLORREF violet = RGB(80,80, 160);
+	COLORREF red = RGB(220, 40, 40);
+	COLORREF gray = RGB(80, 80, 80);
+#define MARGIN		20
+#define Y_TIME		10
+#define Y_GRAPH		140
+#define Y_YZM		200
+#define H_GRAPH		20
+#define L_GRID		10
 
+
+	//
+	// Init DC
+	//
 	memDC.CreateCompatibleDC(&dc);
 	memBmp.CreateCompatibleBitmap(&dc, DISP_WIDTH, DISP_HEIGHT);
 	memDC.SelectObject(&memBmp);
 	memDC.SetBkMode(TRANSPARENT);
+	memDC.FillSolidRect(&rect, bkgnd);
 
-	memDC.FillSolidRect(&rect, RGB(0, 0, 40));
-	memDC.SetBkMode(TRANSPARENT);
-	memDC.SetTextColor(RGB(40, 220, 40));
-	DeleteObject(memDC.SelectObject(penOutline));
-	DeleteObject(memDC.SelectObject(font));
-
+	//
+	// Time
+	//
 	GetLocalTime(&time);
-	str.Format(_T("%02d:%02d:%02d"), time.wHour, time.wMinute, time.wSecond);
+	if(theApp.settings.isRealMode) {
+		str.Format(_T("%02d:%02d:%02d"), time.wHour, time.wMinute, time.wSecond);
+	} else {
+		str.Format(_T("%02d:%02d:%02d"), theApp.status.serverHour, theApp.status.serverMinute, theApp.status.serverSecond);
+		time.wMilliseconds = 0;
+	}
 	memDC.SelectObject(fontL);
-	memDC.TextOut(20, 20, str);
+	memDC.SetTextColor(green);
+	memDC.TextOut(MARGIN, Y_TIME, str);
 	str.Format(_T("%02d"), time.wMilliseconds / 10);
 	memDC.SelectObject(fontM);
-	memDC.TextOut(320, 58, str);
-	memDC.SetTextColor(RGB(80, 80, 160));
-	str.Format(_T("%.2f"), (float)theApp.status.serverDelay / 1000);
-	memDC.TextOut(390, 58, str);
-	memDC.SetTextColor(RGB(40, 220, 40));
-
-	if(theApp.status.autoBidStep == 1) {
-		CRect rgnInfo = theApp.settings.rgn_yzm_info;
-		CRect rgnPic = theApp.settings.rgn_yzm_picture;
-		rgnInfo.OffsetRect(theApp.settings.pt_index);
-		rgnPic.OffsetRect(theApp.settings.pt_index);
-		if(CDC *pDcIE = FindWindow(_T("IEFrame"), NULL)->GetDC()) {
-			memDC.BitBlt(20, 200, rgnInfo.Width(), rgnInfo.Height(), 
-				pDcIE, rgnInfo.left, rgnInfo.top, SRCCOPY);
-			memDC.StretchBlt(20, 240, rgnPic.Width()*3, rgnPic.Height()*3, 
-				pDcIE, rgnPic.left,rgnPic.top, rgnPic.Width(), rgnPic.Height(), SRCCOPY);
+	memDC.TextOut(MARGIN + 300, Y_TIME + 38, str);
+	str.Format(_T("%+.2f"), (float)theApp.status.serverDelay / 1000);
+	memDC.SelectObject(font);
+	memDC.SetTextColor(violet);
+	memDC.TextOut(MARGIN + 360, Y_TIME + 40, str);
+	//
+	// Price Graph
+	//
+	memDC.SelectObject(fontS);
+	memDC.SetTextColor(green);
+	nStep = (rect.Width() - MARGIN * 2) / L_GRID;
+	steps = (theApp.status.price - theApp.settings.bid_cap_price + PRICE_INTERVAL) / MIN_ADD_INTERVAL;
+	steps = (steps < 0) ? 0 : steps;
+	rect = CRect(MARGIN - 2, Y_GRAPH, DISP_WIDTH - MARGIN, Y_GRAPH + H_GRAPH - 1);
+	memDC.SelectObject(penSolid);
+	memDC.MoveTo(rect.right - 1, rect.top);
+	memDC.LineTo(rect.left, rect.top);
+	memDC.LineTo(rect.left, rect.bottom);
+	memDC.LineTo(rect.right, rect.bottom);
+	rect = CRect(MARGIN, Y_GRAPH + 2, MARGIN + L_GRID - 1, Y_GRAPH + H_GRAPH - 2);
+	for(int i = 0; i < nStep; i++) {
+		if(i + 3 < steps){
+			memDC.FillSolidRect(&rect, red);
+		} else if(i < steps) {
+			memDC.FillSolidRect(&rect, green);
+		} else {
+			memDC.FillSolidRect(&rect, gray);
 		}
-	} else if(theApp.status.autoBidStep == 2) {
+		rect.OffsetRect(L_GRID, 0);
+	}
+	memDC.SelectObject(brush);
+	{ // 警示价
+		pt = CPoint(MARGIN - 1, Y_GRAPH - 5);
+		FillTriangle(&memDC, pt, TRUE);
+		str.Format(_T("%d"), theApp.settings.bid_cap_price);
+		memDC.TextOut(pt.x + 15, pt.y - 15, str);
+	}
+	{ // 当前价
+		pt = CPoint(MARGIN + steps * L_GRID - 1, Y_GRAPH + H_GRAPH + 4);
+		FillTriangle(&memDC, pt, FALSE);
+		str.Format(_T("%d"), theApp.status.price + PRICE_INTERVAL);
+		memDC.TextOut(pt.x + 15, pt.y - 5, str);
+	}
+	if(theApp.status.autoBidStep != Status::NORMAL) { // 伏击价
+		pt = CPoint(MARGIN + (theApp.status.bid_price - theApp.settings.bid_cap_price) / MIN_ADD_INTERVAL * L_GRID - 1, Y_GRAPH - 5);
+		FillTriangle(&memDC, pt, TRUE);
+		str.Format(_T("%d"), theApp.status.bid_price);
+		memDC.TextOut(pt.x + 15, pt.y - 15, str);
+	}
+	
 
+	//
+	// YZM
+	//
+	rect = CRect(CPoint(0, Y_YZM), CSize(DISP_WIDTH, DISP_HEIGHT - Y_YZM));
+	if(theApp.status.autoBidStep == Status::NORMAL) {
+		memDC.FillSolidRect(rect, bkgnd);
+	} else if(theApp.status.autoBidStep == Status::YZM) {
+		rect = theApp.settings.rgn_yzm_info;
+		rect.OffsetRect(theApp.settings.pt_index);
+		memDC.BitBlt(MARGIN, Y_YZM + 20, rect.Width(), rect.Height(), 
+			pWndIE->GetDC(), rect.left, rect.top, SRCCOPY);
+		rect = theApp.settings.rgn_yzm_picture;
+		rect.OffsetRect(theApp.settings.pt_index);
+		memDC.StretchBlt(MARGIN, Y_YZM + 60, rect.Width()*3, rect.Height()*3, 
+			pWndIE->GetDC(), rect.left, rect.top, rect.Width(), rect.Height(), SRCCOPY);
+	} else {
+		if(theApp.status.autoBidStep == Status::AUTO_CONFIRM) {
+			memDC.FillSolidRect(&rect, green);
+		} else if(theApp.status.autoBidStep == Status::CONFIRMED) {
+			memDC.FillSolidRect(&rect, red);
+		} else if(theApp.status.autoBidStep == Status::FINISHED) {
+			memDC.FillSolidRect(&rect, violet);
+		} else {
+			memDC.FillSolidRect(&rect, gray); // 异常！
+		}
+		memDC.BitBlt(MARGIN, Y_YZM + 20, theApp.settings.rgn_yzm_info.Width(), theApp.settings.rgn_yzm_info.Height(), &dc, MARGIN, Y_YZM + 20, SRCCOPY);
+		memDC.BitBlt(MARGIN, Y_YZM + 60, theApp.settings.rgn_yzm_picture.Width() * 3, theApp.settings.rgn_yzm_picture.Height() * 3, &dc, MARGIN, Y_YZM + 60, SRCCOPY);
 	}
 
+	//
+	// Copy and Delete DC
+	//
 	dc.BitBlt(0, 0, DISP_WIDTH, DISP_HEIGHT, &memDC, 0, 0, SRCCOPY);
 	memDC.DeleteDC();
 	memBmp.DeleteObject();
@@ -383,14 +512,23 @@ HCURSOR CMainDlg::OnQueryDragIcon() {
 
 
 void CMainDlg::OnBnClickedHotkeyMode() {
+	
 
-	// TODO: 在此添加控件通知处理程序代码
+	if(m_EnableHotKey.GetCheck()) {
+		UnregisteHotKey();
+	} else {
+		RegistHotKey();
+	}
 }
 
 
 void CMainDlg::OnBnClickedHotkeyCalc() {
 
-	// TODO: 在此添加控件通知处理程序代码
+	CString str;
+	DWORD val = m_HotKey.GetHotKey();
+	val  = (val & 0xff) | (val & 0xff00) << 8;
+	str.Format(_T("热键值：0x%x (%d)"), val, val);
+	AfxMessageBox(str);
 }
 
 
@@ -421,11 +559,14 @@ BOOL CMainDlg::RegistHotKey() {
 	if(key = theApp.settings.hotkey_chujia) {
 		flag &= RegisterHotKey(hWnd, HOTKEY_CHUJIA, HIWORD(key), LOWORD(key));
 	}
-	if(key = theApp.settings.hoteky_auto_confirm) {
+	if(key = theApp.settings.hotkey_auto_confirm) {
 		flag &= RegisterHotKey(hWnd, HOTKEY_AUTO_CONFIRM, HIWORD(key), LOWORD(key));
 	}
-	if(key = theApp.settings.hoteky_escape) {
+	if(key = theApp.settings.hotkey_escape) {
 		flag &= RegisterHotKey(hWnd, HOTKEY_ESCAPE, HIWORD(key), LOWORD(key));
+	}
+	if(key = theApp.settings.hotkey_test_yzm) {
+		flag &= RegisterHotKey(hWnd, HOTKEY_TEST_YZM, HIWORD(key), LOWORD(key));
 	}
 	
 	return flag;
@@ -456,11 +597,14 @@ BOOL CMainDlg::UnregisteHotKey() {
 	if(theApp.settings.hotkey_chujia) {
 		flag &= UnregisterHotKey(hWnd, HOTKEY_CHUJIA);
 	}
-	if(theApp.settings.hoteky_auto_confirm) {
+	if(theApp.settings.hotkey_auto_confirm) {
 		flag &= UnregisterHotKey(hWnd, HOTKEY_AUTO_CONFIRM);
 	}
-	if(theApp.settings.hoteky_escape) {
+	if(theApp.settings.hotkey_escape) {
 		flag &= UnregisterHotKey(hWnd, HOTKEY_ESCAPE);
+	}
+	if(theApp.settings.hotkey_test_yzm) {
+		flag &= UnregisterHotKey(hWnd, HOTKEY_TEST_YZM);
 	}
 
 	return flag;
@@ -469,10 +613,16 @@ BOOL CMainDlg::UnregisteHotKey() {
 
 //==================================================================================================
 
+CWnd *CMainDlg::pWndIE = NULL;
+volatile BOOL CMainDlg::canNormal = FALSE;
+volatile BOOL CMainDlg::isNormal = FALSE;
+volatile BOOL CMainDlg::canAutoConfirm = FALSE;
+volatile BOOL CMainDlg::isAutoConfirm = FALSE;
 
-void CMainDlg::Thread_CheckOCR(void *param) {
 
-	CDC *pDcIE = NULL, dc;
+void CMainDlg::Thread_Normal(void *param) {
+
+	CDC dc, *pDcIE = pWndIE->GetDC();
 	CBitmap bitmap;
 	CRect rect;
 	BYTE mask[512];
@@ -480,69 +630,95 @@ void CMainDlg::Thread_CheckOCR(void *param) {
 	int ocr;
 
 
-	isCheckOCR = TRUE;
-	while(canCheckOCR) {
-		
-		if(pDcIE = FindWindow(_T("IEFrame"), NULL)->GetDC()) {
-			dc.CreateCompatibleDC(pDcIE);
-		} else {
-			AfxMessageBox(_T("未找到IE浏览器。"));
-			theApp.GetMainWnd()->SendMessage(WM_CLOSE);
-			break;
-		}
-		
+	isNormal = TRUE;
+	while(canNormal) {
+		//
+		// Init
+		//
+		dc.CreateCompatibleDC(pDcIE);
+		//
+		// Time
+		//
 		rect = theApp.settings.rgn_ocr_time;
 		rect.OffsetRect(theApp.settings.pt_index);
 		bitmap.CreateCompatibleBitmap(pDcIE, rect.Width(), rect.Height()); // 用&dc不行！
 		dc.SelectObject(&bitmap);
 		dc.BitBlt(0, 0, rect.Width(), rect.Height(), pDcIE, rect.left, rect.top, SRCCOPY);
-		Tools::SaveBitmap(&dc, "./ss_time.bmp");
+		// Tools::SaveBitmap(&dc, "./ss_time.bmp");
 		Tools::GetBitmapMask(mask, &dc);
 		bitmap.DeleteObject();
 		ocr = Tools::OCR_Number(mask, rect.Width());
-		theApp.status.serverHour = (ocr / 10000) % 100;
-		theApp.status.serverMinute = (ocr / 100) % 100;
-		theApp.status.serverSecond = ocr % 100;
-		GetLocalTime(&time);
-		theApp.status.serverDelay = ((time.wSecond - theApp.status.serverSecond + 60) % 60) * 1000 + time.wMilliseconds;
-
+		if(ocr != 0 && theApp.status.serverSecond != ocr % 100) {
+			theApp.status.serverHour = (ocr / 10000) % 100;
+			theApp.status.serverMinute = (ocr / 100) % 100;
+			theApp.status.serverSecond = ocr % 100;
+			GetLocalTime(&time);
+			theApp.status.serverDelay = ((time.wSecond - theApp.status.serverSecond + 60) % 60) * 1000 + time.wMilliseconds;
+		}
+		//
+		// Price
+		//
 		rect = theApp.settings.rgn_ocr_price;
 		rect.OffsetRect(theApp.settings.pt_index);
 		bitmap.CreateCompatibleBitmap(pDcIE, rect.Width(), rect.Height());
 		dc.SelectObject(&bitmap);
 		dc.BitBlt(0, 0, rect.Width(), rect.Height(), pDcIE, rect.left, rect.top, SRCCOPY);
-		Tools::SaveBitmap(&dc, "./ss_price.bmp");
+		// Tools::SaveBitmap(&dc, "./ss_price.bmp");
 		Tools::GetBitmapMask(mask, &dc);
 		bitmap.DeleteObject();
 		ocr = Tools::OCR_Number(mask, rect.Width());
-		theApp.status.price = ocr;
-		
+		if(ocr != 0) {
+			theApp.status.price = ocr;
+		}
+		//
+		// Cleanup
+		//
 		dc.DeleteDC();
 		theApp.GetMainWnd()->Invalidate();
 		Sleep(50);
 	}
-	isCheckOCR = FALSE;
+	isNormal = FALSE;
 }
 
 
 void CMainDlg::Thread_AutoConfirm(void *param) {
 
 	SYSTEMTIME time;
-	int current, commit = theApp.settings.bid.commit_before % 60000;
+	int cur_time;
+	int latest_time = theApp.settings.bid.commit_before;
+	int cmt_price = theApp.status.bid_price - (theApp.settings.bid.commit_advance + PRICE_INTERVAL);
+	int cmt_delay = theApp.settings.bid.commit_delay;
 
 
 	isAutoConfirm = TRUE;
 
-	do {
+	while(canAutoConfirm) {
 		if(theApp.settings.isRealMode) {
 			GetSystemTime(&time);
-			current = time.wSecond * 1000 + time.wMilliseconds;
+			cur_time = Tools::MakeTime(time.wHour, time.wMinute, time.wSecond, time.wMilliseconds);
 		} else {
-			current = theApp.status.serverSecond * 1000;
+			cur_time = Tools::MakeTime(theApp.status.serverHour, theApp.status.serverMinute, theApp.status.serverSecond);
+		}
+		// 到达最晚出价时间
+		if(cur_time >= latest_time) {
+			break;
+		}
+		// 达到伏击价格
+		if(theApp.status.price >= cmt_price) {
+			if(cmt_delay > 0) {
+				Sleep((cur_time + cmt_delay < latest_time) ? cmt_delay : latest_time - cur_time);
+			}
+			break;
 		}
 		Sleep(10);
-	} while(current < commit);
+	};
 	theApp.GetMainWnd()->SendMessage(WM_HOTKEY, HOTKEY_CONFIRM, theApp.settings.hotkey_confirm);
+	theApp.status.autoBidStep = Status::CONFIRMED;
+
+	if(canAutoConfirm) {
+		Sleep(theApp.settings.bid_time - latest_time);
+		theApp.status.autoBidStep = Status::FINISHED;
+	}
 
 	canAutoConfirm = FALSE;
 	isAutoConfirm = FALSE;
