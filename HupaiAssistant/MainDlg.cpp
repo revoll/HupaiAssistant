@@ -404,12 +404,12 @@ void CMainDlg::OnPaint() {
 	//
 	// Time
 	//
-	GetLocalTime(&time);
 	if(theApp.settings.isRealMode) {
+		GetLocalTime(&time);
 		str.Format(_T("%02d:%02d:%02d"), time.wHour, time.wMinute, time.wSecond);
 	} else {
-		str.Format(_T("%02d:%02d:%02d"), theApp.status.serverHour, theApp.status.serverMinute, theApp.status.serverSecond);
 		time.wMilliseconds = 0;
+		str.Format(_T("%02d:%02d:%02d"), theApp.status.serverHour, theApp.status.serverMinute, theApp.status.serverSecond);
 	}
 	memDC.SelectObject(fontL);
 	memDC.SetTextColor(green);
@@ -417,10 +417,11 @@ void CMainDlg::OnPaint() {
 	str.Format(_T("%02d"), time.wMilliseconds / 10);
 	memDC.SelectObject(fontM);
 	memDC.TextOut(MARGIN + 300, Y_TIME + 38, str);
-	str.Format(_T("%+.2f"), (float)theApp.status.serverDelay / 1000);
+	str.Format(_T("жд%+.2f"), (float)theApp.status.serverDelay / 1000);
 	memDC.SelectObject(font);
 	memDC.SetTextColor(violet);
 	memDC.TextOut(MARGIN + 360, Y_TIME + 40, str);
+
 	//
 	// Price Graph
 	//
@@ -428,7 +429,7 @@ void CMainDlg::OnPaint() {
 	memDC.SetTextColor(green);
 	nStep = (rect.Width() - MARGIN * 2) / L_GRID;
 	steps = (theApp.status.price - theApp.settings.bid_cap_price + PRICE_INTERVAL) / MIN_ADD_INTERVAL;
-	steps = (steps < 0) ? 0 : steps;
+	steps = (steps > 0) ? steps : 0;
 	rect = CRect(MARGIN - 2, Y_GRAPH, DISP_WIDTH - MARGIN, Y_GRAPH + H_GRAPH - 1);
 	memDC.SelectObject(penSolid);
 	memDC.MoveTo(rect.right - 1, rect.top);
@@ -465,7 +466,6 @@ void CMainDlg::OnPaint() {
 		str.Format(_T("%d"), theApp.status.bid_price);
 		memDC.TextOut(pt.x + 15, pt.y - 15, str);
 	}
-	
 
 	//
 	// YZM
@@ -513,7 +513,6 @@ HCURSOR CMainDlg::OnQueryDragIcon() {
 
 void CMainDlg::OnBnClickedHotkeyMode() {
 	
-
 	if(m_EnableHotKey.GetCheck()) {
 		UnregisteHotKey();
 	} else {
@@ -674,7 +673,7 @@ void CMainDlg::Thread_Normal(void *param) {
 		// Cleanup
 		//
 		dc.DeleteDC();
-		theApp.GetMainWnd()->Invalidate();
+		theApp.GetMainWnd()->Invalidate(FALSE);
 		Sleep(50);
 	}
 	isNormal = FALSE;

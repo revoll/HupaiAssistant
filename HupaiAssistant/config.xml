@@ -1,4 +1,4 @@
-<HupaiAssistant version="2016.5" time="2016-05-21 10:30" description="" real_mode="0">
+<HupaiAssistant version="2016.5" time="2016-05-21 10:30" description="" real_mode="1">
 
 	<BidInfo>
 		<BidDate>2016-05-21</BidDate>
@@ -32,6 +32,20 @@
 	</Position_51hupai>
 	
 	<Position_alltobid>
+		<Index>65,231</Index>
+		<OCR_Time>101,228,64,10</OCR_Time>
+		<OCR_Price>129,244,40,10</OCR_Price>
+		<JJ_Input>665,150</JJ_Input>
+		<JJ_Button>777,150</JJ_Button>
+		<CJ_Input>665,255</CJ_Input>
+		<CJ_Button>777,255</CJ_Button>
+		<YZM_Input>680,230</YZM_Input>
+		<YZM_Refresh>770,230</YZM_Refresh>
+		<YZM_Submit>535,320</YZM_Submit>
+		<YZM_Cancle>725,320</YZM_Cancle>
+		<OK_Button>640,315</OK_Button>
+		<YZM_Info>455,255,345,25</YZM_Info>
+		<YZM_Picture>715,211,115,35</YZM_Picture>
 	</Position_alltobid>
 	
 	<HotKey>

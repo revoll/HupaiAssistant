@@ -21,7 +21,9 @@
 
 Settings::Settings() {
 
-	LoadSettings();
+	if(FALSE == LoadSettings()) {
+		AfxMessageBox(_T("加载Config.xml文件时发现异常！"));
+	}
 }
 
 
@@ -29,145 +31,170 @@ BOOL Settings::LoadSettings() {
 
 	TiXmlDocument config_doc(CONFIG_FILE_PATH);
 	TiXmlElement *eRoot, *e, *e1;
+#define TI_FETCH(E, STR)				{ E = e->FirstChildElement(STR); ASSERT(E); }
 
 
 	//
 	// 加载配置文件
 	//
 	config_doc.LoadFile(TIXML_ENCODING_UTF8);
-	ASSERT(eRoot = config_doc.RootElement());
+	if((eRoot = config_doc.RootElement()) == NULL) {
+		return FALSE;
+	}
 
 	//
 	// 读取配置文件属性
 	//
-	ASSERT(cfg_version = eRoot->Attribute("version"));
-	ASSERT(cfg_time = eRoot->Attribute("time"));
-	ASSERT(cfg_desc = eRoot->Attribute("description"));
-	ASSERT(eRoot->Attribute("real_mode"));
-	this->isRealMode = (eRoot->Attribute("real_mode") == "1") ? TRUE : FALSE;
-	
+	if(this->cfg_version = eRoot->Attribute("version")) {
+		ASSERT(this->cfg_time = eRoot->Attribute("time"));
+		ASSERT(this->cfg_desc = eRoot->Attribute("description"));
+		ASSERT(eRoot->Attribute("real_mode"));
+		this->isRealMode = (strcmp(eRoot->Attribute("real_mode"), "0") == 0) ? FALSE : TRUE;
+	} else {
+		return FALSE;
+	}
+
 	//
 	// 读取本次拍卖信息
 	//
-	ASSERT(e = eRoot->FirstChildElement("BidInfo"));
-	// 竞拍日期
-	ASSERT(e1 = e->FirstChildElement("BidDate"));
-	this->bid_date = e1->GetText();
-	// 竞拍结束时间
-	ASSERT(e1 = e->FirstChildElement("EndTime"));
-	this->bid_time = Tools::TimeFromStr(e1->GetText());
-	// 沪牌指标
-	ASSERT(e1 = e->FirstChildElement("Amount"));
-	this->bid_amount = atoi(e1->GetText());
-	// 警示价
-	ASSERT(e1 = e->FirstChildElement("CapPrice"));
-	this->bid_cap_price = atoi(e1->GetText());
+	if(e = eRoot->FirstChildElement("BidInfo")) {
+		// 竞拍日期
+		TI_FETCH(e1, "BidDate");
+		this->bid_date = e1->GetText();
+		// 竞拍结束时间
+		TI_FETCH(e1, "EndTime");
+		this->bid_time = Tools::TimeFromStr(e1->GetText());
+		// 沪牌指标
+		TI_FETCH(e1, "Amount");
+		this->bid_amount = atoi(e1->GetText());
+		// 警示价
+		TI_FETCH(e1, "CapPrice");
+		this->bid_cap_price = atoi(e1->GetText());
+	} else {
+		return FALSE;
+	}
 
 	//
 	// 读取IE浏览器配置
 	//
-	ASSERT(e = eRoot->FirstChildElement("IE"));
-	// 浏览器大小
-	ASSERT(e1 = e->FirstChildElement("Width"));
-	this->ie_width = atoi(e1->GetText());
-	ASSERT(e1 = e->FirstChildElement("Height"));
-	this->ie_height = atoi(e1->GetText());
-	// URL
-	ASSERT(e1 = isRealMode ? e->FirstChildElement("URL") : e->FirstChildElement("URL_Practice"));
-	this->ie_url = e1->GetText();
+	if(e = eRoot->FirstChildElement("IE")) {
+		// 浏览器大小
+		TI_FETCH(e1, "Width");
+		this->ie_width = atoi(e1->GetText());
+		TI_FETCH(e1, "Height");
+		this->ie_height = atoi(e1->GetText());
+		// URL
+		if(isRealMode) {
+			TI_FETCH(e1, "URL");
+		} else {
+			TI_FETCH(e1, "URL_Practice");
+		}
+		this->ie_url = e1->GetText();
+	} else {
+		return FALSE;
+	}
 
 	//
 	// 读取客户端布局下，各个按钮的位置坐标
 	//
-	ASSERT(e = isRealMode ? eRoot->FirstChildElement("Position_alltobid") : eRoot->FirstChildElement("Position_51hupai"));
-	// 参考点的坐标
-	ASSERT(e1 = e->FirstChildElement("Index"));
-	this->pt_index = Tools::PointFromStr(e1->GetText());
-	// 加价
-	ASSERT(e1 = e->FirstChildElement("JJ_Input"));
-	this->pt_jiajia_input = Tools::PointFromStr(e1->GetText());
-	ASSERT(e1 = e->FirstChildElement("JJ_Button"));
-	this->pt_jiajia = Tools::PointFromStr(e1->GetText());
-	// 出价
-	ASSERT(e1 = e->FirstChildElement("CJ_Input"));
-	this->pt_chujia_input = Tools::PointFromStr(e1->GetText());
-	ASSERT(e1 = e->FirstChildElement("CJ_Button"));
-	this->pt_chujia = Tools::PointFromStr(e1->GetText());
-	// 验证码部分
-	ASSERT(e1 = e->FirstChildElement("YZM_Input"));
-	this->pt_yzm_input = Tools::PointFromStr(e1->GetText());
-	ASSERT(e1 = e->FirstChildElement("YZM_Refresh"));
-	this->pt_yzm_refresh = Tools::PointFromStr(e1->GetText());
-	ASSERT(e1 = e->FirstChildElement("YZM_Submit"));
-	this->pt_yzm_ok = Tools::PointFromStr(e1->GetText());
-	ASSERT(e1 = e->FirstChildElement("YZM_Cancle"));
-	this->pt_yzm_cancle = Tools::PointFromStr(e1->GetText());
-	// 确认按钮：泛指单个按钮情况
-	ASSERT(e1 = e->FirstChildElement("OK_Button"));
-	this->pt_ok = Tools::PointFromStr(e1->GetText());
-	// OCR文字识别部分（区域）
-	ASSERT(e1 = e->FirstChildElement("OCR_Time"));
-	this->rgn_ocr_time = Tools::RectFromStr(e1->GetText());
-	ASSERT(e1 = e->FirstChildElement("OCR_Price"));
-	this->rgn_ocr_price = Tools::RectFromStr(e1->GetText());
-	ASSERT(e1 = e->FirstChildElement("YZM_Picture"));
-	this->rgn_yzm_picture = Tools::RectFromStr(e1->GetText());
-	ASSERT(e1 = e->FirstChildElement("YZM_Info"));
-	this->rgn_yzm_info = Tools::RectFromStr(e1->GetText());
+	if(e = isRealMode ? eRoot->FirstChildElement("Position_alltobid") : eRoot->FirstChildElement("Position_51hupai")) {
+		// 参考点的坐标
+		TI_FETCH(e1, "Index");
+		this->pt_index = Tools::PointFromStr(e1->GetText());
+		// 加价
+		TI_FETCH(e1, "JJ_Input");
+		this->pt_jiajia_input = Tools::PointFromStr(e1->GetText());
+		TI_FETCH(e1, "JJ_Button");
+		this->pt_jiajia = Tools::PointFromStr(e1->GetText());
+		// 出价
+		TI_FETCH(e1, "CJ_Input");
+		this->pt_chujia_input = Tools::PointFromStr(e1->GetText());
+		TI_FETCH(e1, "CJ_Button");
+		this->pt_chujia = Tools::PointFromStr(e1->GetText());
+		// 验证码部分
+		TI_FETCH(e1, "YZM_Input");
+		this->pt_yzm_input = Tools::PointFromStr(e1->GetText());
+		TI_FETCH(e1, "YZM_Refresh");
+		this->pt_yzm_refresh = Tools::PointFromStr(e1->GetText());
+		TI_FETCH(e1, "YZM_Submit");
+		this->pt_yzm_ok = Tools::PointFromStr(e1->GetText());
+		TI_FETCH(e1, "YZM_Cancle");
+		this->pt_yzm_cancle = Tools::PointFromStr(e1->GetText());
+		// 确认按钮：泛指单个按钮情况
+		TI_FETCH(e1, "OK_Button");
+		this->pt_ok = Tools::PointFromStr(e1->GetText());
+		// OCR文字识别部分（区域）
+		TI_FETCH(e1, "OCR_Time");
+		this->rgn_ocr_time = Tools::RectFromStr(e1->GetText());
+		TI_FETCH(e1, "OCR_Price");
+		this->rgn_ocr_price = Tools::RectFromStr(e1->GetText());
+		TI_FETCH(e1, "YZM_Picture");
+		this->rgn_yzm_picture = Tools::RectFromStr(e1->GetText());
+		TI_FETCH(e1, "YZM_Info");
+		this->rgn_yzm_info = Tools::RectFromStr(e1->GetText());
+	} else {
+		return FALSE;
+	}
 
 	//
 	// 热键设置
 	//
-	ASSERT(e = eRoot->FirstChildElement("HotKey"));
-	// 点击确认按钮：对话框包含一个按钮情况下
-	ASSERT(e1 = e->FirstChildElement("PressOK"));
-	this->hotkey_ok = Tools::LongFromStr(e1->GetText());
-	// 点击确认验证码按钮
-	ASSERT(e1 = e->FirstChildElement("PressConfirm"));
-	this->hotkey_confirm = Tools::LongFromStr(e1->GetText());
-	// 点击取消验证码按钮
-	ASSERT(e1 = e->FirstChildElement("PressCancle"));
-	this->hotkey_cancle = Tools::LongFromStr(e1->GetText());
-	// 刷新验证码
-	ASSERT(e1 = e->FirstChildElement("PressRefresh"));
-	this->hotkey_refresh = Tools::LongFromStr(e1->GetText());
-	// 清空验证码
-	ASSERT(e1 = e->FirstChildElement("ClearYZM"));
-	this->hotkey_clear = Tools::LongFromStr(e1->GetText());
-	// 启动默认伏击策略：如48s+700。
-	ASSERT(e1 = e->FirstChildElement("ChuJia"));
-	this->hotkey_chujia = Tools::LongFromStr(e1->GetText());
-	// 退出任何自动模式
-	ASSERT(e1 = e->FirstChildElement("AutoConfirm"));
-	this->hotkey_auto_confirm = Tools::LongFromStr(e1->GetText());
-	// 退出任何自动模式
-	ASSERT(e1 = e->FirstChildElement("Escape"));
-	this->hotkey_escape = Tools::LongFromStr(e1->GetText());
-	// 测试：预览验证码
-	ASSERT(e1 = e->FirstChildElement("TestYZM"));
-	this->hotkey_test_yzm = Tools::LongFromStr(e1->GetText());
+	if(e = eRoot->FirstChildElement("HotKey")) {
+		// 点击确认按钮：对话框包含一个按钮情况下
+		TI_FETCH(e1, "PressOK");
+		this->hotkey_ok = Tools::LongFromStr(e1->GetText());
+		// 点击确认验证码按钮
+		TI_FETCH(e1, "PressConfirm");
+		this->hotkey_confirm = Tools::LongFromStr(e1->GetText());
+		// 点击取消验证码按钮
+		TI_FETCH(e1, "PressCancle");
+		this->hotkey_cancle = Tools::LongFromStr(e1->GetText());
+		// 刷新验证码
+		TI_FETCH(e1, "PressRefresh");
+		this->hotkey_refresh = Tools::LongFromStr(e1->GetText());
+		// 清空验证码
+		TI_FETCH(e1, "ClearYZM");
+		this->hotkey_clear = Tools::LongFromStr(e1->GetText());
+		// 启动默认伏击策略：如48s+700。
+		TI_FETCH(e1, "ChuJia");
+		this->hotkey_chujia = Tools::LongFromStr(e1->GetText());
+		// 退出任何自动模式
+		TI_FETCH(e1, "AutoConfirm");
+		this->hotkey_auto_confirm = Tools::LongFromStr(e1->GetText());
+		// 退出任何自动模式
+		TI_FETCH(e1, "Escape");
+		this->hotkey_escape = Tools::LongFromStr(e1->GetText());
+		// 测试：预览验证码
+		TI_FETCH(e1, "TestYZM");
+		this->hotkey_test_yzm = Tools::LongFromStr(e1->GetText());
+	} else {
+		return FALSE;
+	}
 
 	//
 	// 读取竞拍模式 & 伏击配置
 	//
-	ASSERT(e = eRoot->FirstChildElement("AutoBid"));
-	// 到了指定时间自动启动 或 手动启动 （AutoTrigger = 0 或 1）
-	ASSERT(e1 = e->FirstChildElement("AutoTrigger"));
-	bid.auto_trigger = ("1" == e1->GetText()) ? TRUE : FALSE;
-	ASSERT(e1 = e->FirstChildElement("TriggerTime"));
-	bid.trigger_time = Tools::TimeFromStr(e1->GetText());
-	// 最低价加价量
-	ASSERT(e1 = e->FirstChildElement("AddPrice"));
-	bid.add_price = atoi(e1->GetText());
-	// 提前多少出价？
-	ASSERT(e1 = e->FirstChildElement("CommitAdvance"));
-	bid.commit_advance = atoi(e1->GetText());
-	// 到达伏击价时，延迟多少时间再出价？
-	ASSERT(e1 = e->FirstChildElement("CommitDelay"));
-	bid.commit_delay = Tools::TimeFromStr(e1->GetText());
-	// 最晚出价时间：在此时间必须出价！
-	ASSERT(e1 = e->FirstChildElement("CommitBefore"));
-	bid.commit_before = Tools::TimeFromStr(e1->GetText());
+	if(e = eRoot->FirstChildElement("AutoBid")) {
+		// 到了指定时间自动启动 或 手动启动 （AutoTrigger = 0 或 1）
+		TI_FETCH(e1, "AutoTrigger");
+		bid.auto_trigger = ("1" == e1->GetText()) ? TRUE : FALSE;
+		TI_FETCH(e1, "TriggerTime");
+		bid.trigger_time = Tools::TimeFromStr(e1->GetText());
+		// 最低价加价量
+		TI_FETCH(e1, "AddPrice");
+		bid.add_price = atoi(e1->GetText());
+		// 提前多少出价？
+		TI_FETCH(e1, "CommitAdvance");
+		bid.commit_advance = atoi(e1->GetText());
+		// 到达伏击价时，延迟多少时间再出价？
+		TI_FETCH(e1, "CommitDelay");
+		bid.commit_delay = Tools::TimeFromStr(e1->GetText());
+		// 最晚出价时间：在此时间必须出价！
+		TI_FETCH(e1, "CommitBefore");
+		bid.commit_before = Tools::TimeFromStr(e1->GetText());
+	} else {
+		return FALSE;
+	}
 
 	//
 	// 配置信息加载结束
